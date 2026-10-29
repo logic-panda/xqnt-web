@@ -56,6 +56,7 @@ let translationToken = ''
 let activeProvider = requestedProvider
 let bingSession = null
 let googlePowerShellOnly = false
+let translationIncomplete = false
 
 function protectText(value) {
   const protectedValues = []
@@ -175,7 +176,11 @@ async function requestBingText(text, targetLanguage, attempt = 1) {
   }
   const translated = payload?.[0]?.translations?.[0]?.text
   if (typeof translated !== 'string') {
-    throw new Error('Bing translation response did not contain translated text')
+    // Throttled sessions answer 200 with an error payload; back off and renew.
+    if (attempt >= 6) throw new Error('Bing translation response did not contain translated text')
+    bingSession = null
+    await sleep(Math.min(5000 * (2 ** (attempt - 1)), 60000))
+    return requestBingText(text, targetLanguage, attempt + 1)
   }
   return translated
 }
@@ -301,11 +306,14 @@ async function requestGoogleText(text, targetLanguage, attempt = 1) {
     if (!translated) throw new Error('Google translation response did not contain translated text')
     return translated
   } catch (error) {
-    try {
-      googlePowerShellOnly = true
-      return await requestGoogleTextViaPowerShell(text, targetLanguage)
-    } catch (transportError) {
-      if (attempt >= 6) throw transportError
+    // The PowerShell transport only exists on Windows; elsewhere retry over fetch.
+    if (process.platform === 'win32') {
+      try {
+        googlePowerShellOnly = true
+        return await requestGoogleTextViaPowerShell(text, targetLanguage)
+      } catch (transportError) {
+        if (attempt >= 6) throw transportError
+      }
     }
     if (attempt >= 6) throw error
     const baseDelay = error.status === 429 ? 5000 : 1000
@@ -629,10 +637,19 @@ async function translateCandidateMatrix(candidateEntries, verifiedSame, phaseNam
       batch.some(entry => candidateKeys[localeName].has(entry.key))
     ))
     const targetLanguages = activeLocales.map(localeName => localeTargets[localeName])
-    const matrix = await requestTranslationMatrix(
-      batch.map(entry => entry.source),
-      targetLanguages
-    )
+    let matrix
+    try {
+      matrix = await requestTranslationMatrix(
+        batch.map(entry => entry.source),
+        targetLanguages
+      )
+    } catch (error) {
+      // Missing-only runs are resumable: keep finished batches, rerun for the rest.
+      if (!missingOnly) throw error
+      translationIncomplete = true
+      console.warn(`${phaseName}: stopped at ${completed}/${unionEntries.length} (${error.message}); rerun to resume`)
+      break
+    }
     batch.forEach((entry, index) => {
       for (const localeName of activeLocales) {
         if (!candidateKeys[localeName].has(entry.key)) continue
@@ -856,6 +873,7 @@ for (const localeName of activeLocaleNames) {
   // Rebuild the allow-list from the final effective locale instead of relying
   // only on values translated during this process. This also preserves
   // intentional technical terms when a missing-only run skips existing text.
+  if (translationIncomplete) continue
   const finalLocale = {
     ...coreLocales[localeName],
     ...composeOverrides(overrideModules, localeName),
@@ -873,4 +891,9 @@ for (const localeName of activeLocaleNames) {
 }
 
 writeFileSync(outputPath, renderGeneratedOverrides(generatedMessages, verifiedSame), 'utf8')
-console.log(`Wrote complete locale overrides to ${outputPath}`)
+if (translationIncomplete) {
+  console.warn(`Wrote partial locale overrides to ${outputPath}; rerun to translate the rest`)
+  process.exitCode = 1
+} else {
+  console.log(`Wrote complete locale overrides to ${outputPath}`)
+}

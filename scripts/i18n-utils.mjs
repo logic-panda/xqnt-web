@@ -8,6 +8,7 @@ export const localeTargets = {
   'fr-FR': 'fr',
   'ja-JP': 'ja',
   'ko-KR': 'ko',
+  'pt-BR': 'pt',
   'ru-RU': 'ru',
   'th-TH': 'th',
   'vi-VN': 'vi',

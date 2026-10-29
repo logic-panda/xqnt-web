@@ -108,6 +108,7 @@ const localeLoaders = {
   'fr-FR': () => import('./lang/fr-FR.js'),
   'ja-JP': () => import('./lang/ja-JP.js'),
   'ko-KR': () => import('./lang/ko-KR.js'),
+  'pt-BR': () => import('./lang/pt-BR.js'),
   'ru-RU': () => import('./lang/ru-RU.js'),
   'th-TH': () => import('./lang/th-TH.js'),
   'vi-VN': () => import('./lang/vi-VN.js'),
