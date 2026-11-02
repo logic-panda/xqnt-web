@@ -983,6 +983,29 @@
 
             <div class="signal-alert-block">
               <div class="signal-alert-block__head">
+                <strong>{{ $t('indicatorIde.signalAlert.triggerMode') }}</strong>
+                <span>{{ $t('indicatorIde.signalAlert.triggerModeHint') }}</span>
+              </div>
+              <a-radio-group v-model="signalAlertForm.triggerMode">
+                <a-radio value="close">{{ $t('indicatorIde.signalAlert.triggerModeClose') }}</a-radio>
+                <a-radio value="preclose">{{ $t('indicatorIde.signalAlert.triggerModePreclose') }}</a-radio>
+                <a-radio value="realtime">{{ $t('indicatorIde.signalAlert.triggerModeRealtime') }}</a-radio>
+              </a-radio-group>
+              <a-radio-group
+                v-if="signalAlertForm.triggerMode === 'preclose'"
+                v-model="signalAlertForm.precloseSeconds"
+                size="small"
+                button-style="solid"
+                class="signal-alert-lead"
+              >
+                <a-radio-button v-for="seconds in [60, 120, 180]" :key="seconds" :value="seconds">
+                  {{ $t('indicatorIde.signalAlert.triggerModePrecloseLead', { n: seconds / 60 }) }}
+                </a-radio-button>
+              </a-radio-group>
+            </div>
+
+            <div class="signal-alert-block">
+              <div class="signal-alert-block__head">
                 <strong>{{ $t('indicatorIde.signalAlert.channels') }}</strong>
                 <span>{{ $t('indicatorIde.signalAlert.channelsHint') }}</span>
               </div>
@@ -1002,6 +1025,19 @@
               <div v-if="signalAlertForm.channels.includes('webhook')" class="signal-alert-target-row">
                 <a-input v-model="signalAlertForm.webhookUrl" :placeholder="$t('indicatorIde.signalAlert.webhookUrlPlaceholder')" />
               </div>
+            </div>
+
+            <div v-if="signalAlertForm.channels.includes('telegram')" class="signal-alert-block">
+              <div class="signal-alert-block__head">
+                <strong>{{ $t('indicatorIde.signalAlert.resultTracking') }}</strong>
+                <span>{{ $t('indicatorIde.signalAlert.resultTrackingHint') }}</span>
+              </div>
+              <a-radio-group v-model="signalAlertForm.resultTracking">
+                <a-radio value="off">{{ $t('indicatorIde.signalAlert.resultTrackingOff') }}</a-radio>
+                <a-radio value="next">{{ $t('indicatorIde.signalAlert.resultTrackingNext') }}</a-radio>
+                <a-radio value="gale1">{{ $t('indicatorIde.signalAlert.resultTrackingGale1') }}</a-radio>
+                <a-radio value="gale2">{{ $t('indicatorIde.signalAlert.resultTrackingGale2') }}</a-radio>
+              </a-radio-group>
             </div>
 
             <div class="signal-alert-actions">
@@ -1034,6 +1070,11 @@
                     </div>
                     <div class="signal-alert-task-card__chips">
                       <a-tag v-for="key in (task.signal_keys || [])" :key="key">{{ signalAlertKeyLabel(key) }}</a-tag>
+                      <a-tag v-if="task.trigger_mode === 'preclose'" color="orange">{{ $t('indicatorIde.signalAlert.triggerModePrecloseTag', { n: (task.preclose_seconds || 60) / 60 }) }}</a-tag>
+                      <a-tag v-if="task.trigger_mode === 'realtime'" color="orange">{{ $t('indicatorIde.signalAlert.triggerModeRealtime') }}</a-tag>
+                      <a-tag v-if="['next', 'gale1', 'gale2'].includes(task.result_tracking)" color="green">
+                        {{ $t('indicatorIde.signalAlert.resultTrackingTag') }}{{ task.result_tracking === 'next' ? '' : ' · G' + task.result_tracking.slice(-1) }}
+                      </a-tag>
                       <a-tag v-for="ch in (task.channels || [])" :key="ch" color="blue">{{ signalAlertChannelLabel(ch) }}</a-tag>
                     </div>
                   </div>
@@ -1399,6 +1440,9 @@ export default {
         symbolName: 'Bitcoin',
         timeframe: '1D',
         signalKeys: ['any'],
+        triggerMode: 'close',
+        precloseSeconds: 120,
+        resultTracking: 'next',
         channels: ['browser'],
         email: '',
         telegramChatId: '',
@@ -2521,6 +2565,9 @@ export default {
         symbolName: current.name || '',
         timeframe: this.timeframe,
         signalKeys: ['any'],
+        triggerMode: 'close',
+        precloseSeconds: 120,
+        resultTracking: 'next',
         channels: Array.isArray(defaults.channels) && defaults.channels.length ? [...defaults.channels] : ['browser'],
         email: defaults.email || '',
         telegramChatId: defaults.telegramChatId || '',
@@ -2569,6 +2616,12 @@ export default {
         symbol_name: form.symbolName || '',
         timeframe: form.timeframe || this.timeframe,
         signal_keys: Array.isArray(form.signalKeys) && form.signalKeys.length ? form.signalKeys : ['any'],
+        trigger_mode: ['preclose', 'realtime'].includes(form.triggerMode) ? form.triggerMode : 'close',
+        preclose_seconds: [60, 120, 180].includes(form.precloseSeconds) ? form.precloseSeconds : 120,
+        result_tracking: ['next', 'gale1', 'gale2'].includes(form.resultTracking) ? form.resultTracking : 'off',
+        // The chart's candle source, so the alert evaluates the candles the chart draws markers on.
+        exchange_id: (form.market || this.market) === 'Crypto' ? this.cryptoExchangeId : '',
+        market_type: (form.market || this.market) === 'Crypto' ? this.cryptoMarketType : '',
         channels: Array.isArray(form.channels) && form.channels.length ? form.channels : ['browser'],
         targets: {
           email: form.email || '',
@@ -2654,6 +2707,9 @@ export default {
         symbolName: task.symbol_name || '',
         timeframe: task.timeframe || this.timeframe,
         signalKeys: Array.isArray(task.signal_keys) && task.signal_keys.length ? [...task.signal_keys] : ['any'],
+        triggerMode: ['preclose', 'realtime'].includes(task.trigger_mode) ? task.trigger_mode : 'close',
+        precloseSeconds: task.trigger_mode === 'preclose' && [60, 120, 180].includes(task.preclose_seconds) ? task.preclose_seconds : 120,
+        resultTracking: ['next', 'gale1', 'gale2'].includes(task.result_tracking) ? task.result_tracking : 'off',
         channels: Array.isArray(task.channels) && task.channels.length ? [...task.channels] : ['browser'],
         email: targets.email || defaults.email || '',
         telegramChatId: targets.telegram_chat_id || defaults.telegramChatId || '',
@@ -5025,6 +5081,10 @@ export default {
 .signal-alert-block {
   margin-bottom: 12px;
   padding: 13px 14px;
+}
+.signal-alert-lead {
+  display: block;
+  margin-top: 10px;
 }
 .signal-alert-block__head {
   display: flex;
