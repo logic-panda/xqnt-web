@@ -1169,6 +1169,7 @@ export default {
           }
         } catch (e) {
           this.codeLoginError = e.response?.data?.msg || this.$t('user.security.verificationFailed') || 'Failed to send code'
+          if (e.response?.status === 429 && !this.codeLoginCountdownTimer) this.startCodeLoginCountdown()
           if (this.isTurnstileErrorMessage(this.codeLoginError)) {
             this.resetSharedTurnstile()
           }
@@ -1348,6 +1349,7 @@ export default {
           }
         } catch (e) {
           this.registerError = e.response?.data?.msg || this.$t('user.security.verificationFailed') || 'Failed to send code'
+          if (e.response?.status === 429 && !this.registerCountdownTimer) this.startRegisterCountdown()
           if (this.isTurnstileErrorMessage(this.registerError)) {
             this.resetSharedTurnstile()
           }
@@ -1517,6 +1519,7 @@ export default {
           }
         } catch (e) {
           this.resetError = e.response?.data?.msg || this.$t('user.security.verificationFailed') || 'Failed to send code'
+          if (e.response?.status === 429 && !this.resetCountdownTimer) this.startResetCountdown()
           if (this.isTurnstileErrorMessage(this.resetError)) {
             this.resetSharedTurnstile()
           }
