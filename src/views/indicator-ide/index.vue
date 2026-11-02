@@ -1018,9 +1018,8 @@
               <div v-if="signalAlertForm.channels.includes('email')" class="signal-alert-target-row">
                 <a-input v-model="signalAlertForm.email" :placeholder="$t('indicatorIde.signalAlert.emailPlaceholder')" />
               </div>
-              <div v-if="signalAlertForm.channels.includes('telegram')" class="signal-alert-target-row signal-alert-target-row--split">
-                <a-input v-model="signalAlertForm.telegramChatId" :placeholder="$t('indicatorIde.signalAlert.telegramChatIdPlaceholder')" />
-                <a-input v-model="signalAlertForm.telegramBotToken" :placeholder="$t('indicatorIde.signalAlert.telegramBotTokenPlaceholder')" />
+              <div v-if="signalAlertForm.channels.includes('telegram')" class="signal-alert-target-row">
+                <telegram-connect v-model="signalAlertForm.telegramChatId" @change="signalAlertNotificationDefaults.telegramChatId = $event" />
               </div>
               <div v-if="signalAlertForm.channels.includes('webhook')" class="signal-alert-target-row">
                 <a-input v-model="signalAlertForm.webhookUrl" :placeholder="$t('indicatorIde.signalAlert.webhookUrlPlaceholder')" />
@@ -1314,6 +1313,7 @@ import { applyCodeEditsToCodeMirror, applyExactCodeEdits, candidateCodeEditOpera
 import KlineChart from '@/views/indicator-analysis/components/KlineChart.vue'
 import QuickTradePanel from '@/components/QuickTradePanel/QuickTradePanel'
 import IndicatorMarketPicker from './components/IndicatorMarketPicker.vue'
+import TelegramConnect from '@/components/TelegramConnect'
 import { Modal } from 'ant-design-vue'
 import message from 'ant-design-vue/es/message'
 
@@ -1370,7 +1370,7 @@ const supportedChartTypes = new Set([
 export default {
   name: 'IndicatorIDE',
   mixins: [baseMixin],
-  components: { KlineChart, QuickTradePanel, IndicatorMarketPicker },
+  components: { KlineChart, QuickTradePanel, IndicatorMarketPicker, TelegramConnect },
   data () {
     return {
       userId: null,
@@ -1427,7 +1427,6 @@ export default {
         channels: ['browser'],
         email: '',
         telegramChatId: '',
-        telegramBotToken: '',
         webhookUrl: '',
         webhookToken: '',
         webhookSigningSecret: ''
@@ -1446,7 +1445,6 @@ export default {
         channels: ['browser'],
         email: '',
         telegramChatId: '',
-        telegramBotToken: '',
         webhookUrl: '',
         webhookToken: '',
         webhookSigningSecret: ''
@@ -2534,7 +2532,6 @@ export default {
               channels: configuredChannels.length ? Array.from(new Set(configuredChannels)) : ['browser'],
               email: res.data.email || '',
               telegramChatId: res.data.telegram_chat_id || '',
-              telegramBotToken: res.data.telegram_bot_token || '',
               webhookUrl: res.data.webhook_url || '',
               webhookToken: res.data.webhook_token || '',
               webhookSigningSecret: res.data.webhook_signing_secret || ''
@@ -2571,7 +2568,6 @@ export default {
         channels: Array.isArray(defaults.channels) && defaults.channels.length ? [...defaults.channels] : ['browser'],
         email: defaults.email || '',
         telegramChatId: defaults.telegramChatId || '',
-        telegramBotToken: defaults.telegramBotToken || '',
         webhookUrl: defaults.webhookUrl || '',
         webhookToken: defaults.webhookToken || '',
         webhookSigningSecret: defaults.webhookSigningSecret || ''
@@ -2626,7 +2622,6 @@ export default {
         targets: {
           email: form.email || '',
           telegram_chat_id: form.telegramChatId || '',
-          telegram_bot_token: form.telegramBotToken || '',
           webhook_url: form.webhookUrl || '',
           webhook_token: form.webhookToken || '',
           webhook_signing_secret: form.webhookSigningSecret || ''
@@ -2664,7 +2659,7 @@ export default {
         return
       }
       if (payload.channels.includes('telegram') && !payload.targets.telegram_chat_id) {
-        this.$message.warning(this.$t('indicatorIde.signalAlert.fillTelegram'))
+        this.$message.warning(this.$t('telegramConnect.required'))
         return
       }
       if (payload.channels.includes('webhook') && !payload.targets.webhook_url) {
@@ -2713,7 +2708,6 @@ export default {
         channels: Array.isArray(task.channels) && task.channels.length ? [...task.channels] : ['browser'],
         email: targets.email || defaults.email || '',
         telegramChatId: targets.telegram_chat_id || defaults.telegramChatId || '',
-        telegramBotToken: targets.telegram_bot_token || defaults.telegramBotToken || '',
         webhookUrl: targets.webhook_url || defaults.webhookUrl || '',
         webhookToken: targets.webhook_token || defaults.webhookToken || '',
         webhookSigningSecret: targets.webhook_signing_secret || defaults.webhookSigningSecret || ''

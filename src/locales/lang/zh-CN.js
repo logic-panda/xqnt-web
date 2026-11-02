@@ -7727,5 +7727,15 @@ export default {
   "settings.universeSync.fixedHistoryWithCodes": "以下标的池没有可靠的历史成分，已从所选日期起固定使用本次同步的成分：{codes}。",
   "settings.universeSync.historyUnavailableWithCodes": "当前快照已更新；以下标的池暂无可靠的历史成分来源：{codes}。",
   "universe.invalidHistoryDate": "请选择不晚于今天的有效历史起点。",
-  "universe.historySourceUnavailable": "该标的池暂无经过验证的历史成分来源。"
+  "universe.historySourceUnavailable": "该标的池暂无经过验证的历史成分来源。",
+  "telegramConnect.connect": "连接 Telegram",
+  "telegramConnect.reconnect": "重新连接 Telegram",
+  "telegramConnect.connected": "已连接",
+  "telegramConnect.open": "打开 Telegram",
+  "telegramConnect.waiting": "请在 Telegram 机器人中点击「开始」…",
+  "telegramConnect.hint": "将打开我们的 Telegram 机器人，点击「开始」即可接收提醒。",
+  "telegramConnect.success": "Telegram 已连接",
+  "telegramConnect.expired": "Telegram 链接已过期，请重试。",
+  "telegramConnect.failed": "无法连接 Telegram",
+  "telegramConnect.required": "请先连接 Telegram"
 }

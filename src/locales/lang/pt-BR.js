@@ -7450,5 +7450,15 @@ const locale = {
 
 export default {
   ...components,
-  ...locale
+  ...locale,
+  "telegramConnect.connect": "Conectar Telegram",
+  "telegramConnect.reconnect": "Reconectar Telegram",
+  "telegramConnect.connected": "Conectado",
+  "telegramConnect.open": "Abrir Telegram",
+  "telegramConnect.waiting": "Toque em Iniciar no nosso bot do Telegram…",
+  "telegramConnect.hint": "Abre o nosso bot do Telegram. Toque em Iniciar para receber alertas.",
+  "telegramConnect.success": "Telegram conectado",
+  "telegramConnect.expired": "O link do Telegram expirou. Tente novamente.",
+  "telegramConnect.failed": "Não foi possível conectar o Telegram",
+  "telegramConnect.required": "Conecte o Telegram primeiro"
 }

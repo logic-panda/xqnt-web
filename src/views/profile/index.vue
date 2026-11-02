@@ -459,41 +459,13 @@
                 </a-form-item>
 
                 <div class="notification-fields-grid">
-                  <!-- Telegram Bot Token -->
+                  <!-- Telegram: chat id is captured by the platform bot -->
                   <a-form-item>
                     <span slot="label" class="notification-field-label">
-                      <a-icon type="robot" />
-                      {{ $t('profile.notifications.telegramBotToken') || 'Telegram Bot Token' }}
+                      <a-icon type="send" />
+                      Telegram
                     </span>
-                    <a-input-password
-                      v-decorator="['telegram_bot_token', { initialValue: notificationSettings.telegram_bot_token }]"
-                      :placeholder="$t('profile.notifications.telegramBotTokenPlaceholder') || '请输入您的 Telegram Bot Token'"
-                    >
-                    </a-input-password>
-                    <div class="field-hint">
-                      <a-icon type="info-circle" />
-                      <span>
-                        {{ $t('profile.notifications.telegramBotTokenHint') || '通过 @BotFather 创建机器人获取 Token' }}
-                        <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer">@BotFather</a>
-                      </span>
-                    </div>
-                  </a-form-item>
-
-                  <!-- Telegram Chat ID -->
-                  <a-form-item>
-                    <span slot="label" class="notification-field-label">
-                      <a-icon type="message" />
-                      {{ $t('profile.notifications.telegramChatId') || 'Telegram Chat ID' }}
-                    </span>
-                    <a-input
-                      v-decorator="['telegram_chat_id', { initialValue: notificationSettings.telegram_chat_id }]"
-                      :placeholder="$t('profile.notifications.telegramPlaceholder') || '请输入您的 Telegram Chat ID（如 123456789）'"
-                    >
-                    </a-input>
-                    <div class="field-hint">
-                      <a-icon type="info-circle" />
-                      <span>{{ $t('profile.notifications.telegramHint') || '发送 /start 给 @userinfobot 可获取您的 Chat ID' }}</span>
-                    </div>
+                    <telegram-connect v-decorator="['telegram_chat_id', { initialValue: notificationSettings.telegram_chat_id }]" />
                   </a-form-item>
 
                   <!-- Notification Email -->
@@ -844,6 +816,7 @@ import { createReferralWithdrawal, getReferralRewards } from '@/api/billing'
 import { getSettingsValues } from '@/api/settings'
 import { baseMixin } from '@/store/app-mixin'
 import ProfileAgentTokens from '@/views/profile/components/ProfileAgentTokens.vue'
+import TelegramConnect from '@/components/TelegramConnect'
 import { formatBrowserLocalDateTime } from '@/utils/userTime'
 
 const DEFAULT_NOTIFICATION_CHANNELS = ['browser', 'email']
@@ -853,7 +826,7 @@ const normalizeNotificationChannels = channels => (
 
 export default {
   name: 'Profile',
-  components: { ProfileAgentTokens },
+  components: { ProfileAgentTokens, TelegramConnect },
   mixins: [baseMixin],
   data () {
     return {
@@ -952,7 +925,6 @@ export default {
       // Notification settings
       notificationSettings: {
         default_channels: [...DEFAULT_NOTIFICATION_CHANNELS],
-        telegram_bot_token: '',
         telegram_chat_id: '',
         email: '',
         phone: '',
@@ -1270,7 +1242,6 @@ export default {
           if (res.data.notification_settings) {
             this.notificationSettings = {
               default_channels: normalizeNotificationChannels(res.data.notification_settings.default_channels),
-              telegram_bot_token: res.data.notification_settings.telegram_bot_token || '',
               telegram_chat_id: res.data.notification_settings.telegram_chat_id || '',
               email: res.data.notification_settings.email || res.data.email || '',
               phone: res.data.notification_settings.phone || '',
@@ -1823,7 +1794,6 @@ export default {
         if (res.code === 1 && res.data) {
           this.notificationSettings = {
             default_channels: normalizeNotificationChannels(res.data.default_channels),
-            telegram_bot_token: res.data.telegram_bot_token || '',
             telegram_chat_id: res.data.telegram_chat_id || '',
             email: res.data.email || this.profile.email || '',
             phone: res.data.phone || '',
@@ -1836,7 +1806,6 @@ export default {
           this.$nextTick(() => {
             this.notificationForm.setFieldsValue({
               default_channels: this.notificationSettings.default_channels,
-              telegram_bot_token: this.notificationSettings.telegram_bot_token,
               telegram_chat_id: this.notificationSettings.telegram_chat_id,
               email: this.notificationSettings.email,
               phone: this.notificationSettings.phone,
@@ -1888,7 +1857,6 @@ export default {
         try {
           const res = await updateNotificationSettings({
             default_channels: normalizeNotificationChannels(values.default_channels),
-            telegram_bot_token: values.telegram_bot_token || '',
             telegram_chat_id: values.telegram_chat_id || '',
             email: values.email || '',
             phone: values.phone || '',
@@ -1921,15 +1889,9 @@ export default {
       }
 
       // Check if required fields are filled
-      if (channels.includes('telegram')) {
-        if (!values.telegram_bot_token) {
-          this.$message.warning(this.$t('profile.notifications.fillTelegramToken') || '请填写 Telegram Bot Token')
-          return
-        }
-        if (!values.telegram_chat_id) {
-          this.$message.warning(this.$t('profile.notifications.fillTelegram') || '请填写 Telegram Chat ID')
-          return
-        }
+      if (channels.includes('telegram') && !values.telegram_chat_id) {
+        this.$message.warning(this.$t('telegramConnect.required'))
+        return
       }
       if (channels.includes('email') && !values.email) {
         this.$message.warning(this.$t('profile.notifications.fillEmail') || '请填写通知邮箱')
@@ -1952,7 +1914,6 @@ export default {
       try {
         const saveRes = await updateNotificationSettings({
           default_channels: channels,
-          telegram_bot_token: values.telegram_bot_token || '',
           telegram_chat_id: values.telegram_chat_id || '',
           email: values.email || '',
           phone: values.phone || '',

@@ -170,6 +170,7 @@ export function getNotificationSettings () {
 /**
  * Update current user's notification settings
  * @param {Object} data - { default_channels, telegram_chat_id, email, discord_webhook, webhook_url, phone }
+ *   (telegram_chat_id comes from the Connect Telegram flow; the platform bot sends)
  */
 export function updateNotificationSettings (data) {
   return request({
@@ -187,6 +188,28 @@ export function testNotificationSettings () {
     url: '/api/users/notification-settings/test',
     method: 'post',
     data: {}
+  })
+}
+
+/**
+ * Start linking the user's Telegram chat to the platform bot: returns { url, code, expires_in }
+ */
+export function startTelegramLink () {
+  return request({
+    url: '/api/users/notification-settings/telegram-link',
+    method: 'post',
+    data: {}
+  })
+}
+
+/**
+ * Poll a Telegram link code: returns { linked, chat_id } once the user pressed Start in the bot
+ */
+export function getTelegramLinkStatus (code) {
+  return request({
+    url: '/api/users/notification-settings/telegram-link',
+    method: 'get',
+    params: { code }
   })
 }
 

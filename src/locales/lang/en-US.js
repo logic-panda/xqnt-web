@@ -7426,5 +7426,15 @@ export default {
   "settings.universeSync.fixedHistoryWithCodes": "No reliable historical membership was found, so the members synchronized now are fixed from the selected date for: {codes}.",
   "settings.universeSync.historyUnavailableWithCodes": "Current snapshots were updated. Exact historical membership is unavailable for: {codes}.",
   "universe.invalidHistoryDate": "Choose a valid history start date that is not in the future.",
-  "universe.historySourceUnavailable": "No verified historical constituent source is available for this universe."
+  "universe.historySourceUnavailable": "No verified historical constituent source is available for this universe.",
+  "telegramConnect.connect": "Connect Telegram",
+  "telegramConnect.reconnect": "Reconnect Telegram",
+  "telegramConnect.connected": "Connected",
+  "telegramConnect.open": "Open Telegram",
+  "telegramConnect.waiting": "Press Start in our Telegram bot…",
+  "telegramConnect.hint": "Opens our Telegram bot. Press Start to receive alerts.",
+  "telegramConnect.success": "Telegram connected",
+  "telegramConnect.expired": "The Telegram link expired. Please try again.",
+  "telegramConnect.failed": "Could not connect Telegram",
+  "telegramConnect.required": "Connect Telegram first"
 }
