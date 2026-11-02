@@ -100,6 +100,7 @@
                   size="large"
                   type="email"
                   :placeholder="$t('user.login.email') || 'Email'"
+                  @change="codeLoginSent = false"
                   v-decorator="[
                     'email',
                     {
@@ -115,11 +116,13 @@
                 </a-input>
               </a-form-item>
 
-              <a-form-item>
+              <!-- Code input only appears once a code has actually been sent -->
+              <a-form-item v-if="codeLoginSent">
                 <a-row class="auth-code-row" :gutter="12">
                   <a-col :span="16">
                     <a-input
                       size="large"
+                      autoFocus
                       :placeholder="$t('user.login.verificationCode') || 'Verification Code'"
                       v-decorator="[
                         'code',
@@ -152,10 +155,10 @@
                   type="primary"
                   htmlType="submit"
                   class="submit-button"
-                  :loading="codeLoginLoading"
-                  :disabled="codeLoginLoading"
+                  :loading="codeLoginLoading || codeLoginSendingCode"
+                  :disabled="codeLoginLoading || codeLoginSendingCode"
                   block
-                >{{ $t('user.login.submit') || 'Login' }}</a-button>
+                >{{ codeLoginSent ? ($t('user.login.submit') || 'Login') : ($t('user.register.sendCode') || 'Send Code') }}</a-button>
               </a-form-item>
 
               <div class="code-login-hint">
@@ -210,6 +213,7 @@
                   size="large"
                   type="email"
                   :placeholder="$t('user.register.email') || 'Email'"
+                  @change="registerCodeSent = false"
                   v-decorator="[
                     'email',
                     {
@@ -223,38 +227,6 @@
                 >
                   <a-icon slot="prefix" type="mail" :style="{ color: 'rgba(0,0,0,.25)' }"/>
                 </a-input>
-              </a-form-item>
-
-              <!-- Verification Code -->
-              <a-form-item>
-                <a-row class="auth-code-row" :gutter="12">
-                  <a-col :span="16">
-                    <a-input
-                      size="large"
-                      :placeholder="$t('user.register.verificationCode') || 'Verification Code'"
-                      v-decorator="[
-                        'code',
-                        {
-                          rules: [{ required: true, message: $t('user.register.codeRequired') || 'Please enter verification code' }],
-                          validateTrigger: 'blur'
-                        }
-                      ]"
-                    >
-                      <a-icon slot="prefix" type="safety-certificate" :style="{ color: 'rgba(0,0,0,.25)' }"/>
-                    </a-input>
-                  </a-col>
-                  <a-col :span="8">
-                    <a-button
-                      size="large"
-                      block
-                      :loading="registerSendingCode"
-                      :disabled="registerSendingCode || registerCountdown > 0"
-                      @click="handleRegisterSendCode"
-                    >
-                      {{ registerCountdown > 0 ? `${registerCountdown}s` : ($t('user.register.sendCode') || 'Send') }}
-                    </a-button>
-                  </a-col>
-                </a-row>
               </a-form-item>
 
               <!-- Username -->
@@ -347,16 +319,49 @@
                 </a-input-password>
               </a-form-item>
 
+              <!-- Verification Code: only after a code has actually been sent -->
+              <a-form-item v-if="registerCodeSent">
+                <a-row class="auth-code-row" :gutter="12">
+                  <a-col :span="16">
+                    <a-input
+                      size="large"
+                      autoFocus
+                      :placeholder="$t('user.register.verificationCode') || 'Verification Code'"
+                      v-decorator="[
+                        'code',
+                        {
+                          rules: [{ required: true, message: $t('user.register.codeRequired') || 'Please enter verification code' }],
+                          validateTrigger: 'blur'
+                        }
+                      ]"
+                    >
+                      <a-icon slot="prefix" type="safety-certificate" :style="{ color: 'rgba(0,0,0,.25)' }"/>
+                    </a-input>
+                  </a-col>
+                  <a-col :span="8">
+                    <a-button
+                      size="large"
+                      block
+                      :loading="registerSendingCode"
+                      :disabled="registerSendingCode || registerCountdown > 0"
+                      @click="handleRegisterSendCode"
+                    >
+                      {{ registerCountdown > 0 ? `${registerCountdown}s` : ($t('user.register.sendCode') || 'Send') }}
+                    </a-button>
+                  </a-col>
+                </a-row>
+              </a-form-item>
+
               <a-form-item style="margin-top:24px">
                 <a-button
                   size="large"
                   type="primary"
                   htmlType="submit"
                   class="submit-button"
-                  :loading="registerLoading"
-                  :disabled="registerLoading"
+                  :loading="registerLoading || registerSendingCode"
+                  :disabled="registerLoading || registerSendingCode"
                   block
-                >{{ $t('user.register.submit') || 'Create Account' }}</a-button>
+                >{{ registerCodeSent ? ($t('user.register.submit') || 'Create Account') : ($t('user.register.sendCode') || 'Send Code') }}</a-button>
               </a-form-item>
             </a-form>
           </a-tab-pane>
@@ -787,6 +792,7 @@ export default {
       codeLoginSendingCode: false,
       codeLoginCountdown: 0,
       codeLoginCountdownTimer: null,
+      codeLoginSent: false,
 
       // Register
       registerForm: this.$form.createForm(this, { name: 'registerForm' }),
@@ -795,6 +801,7 @@ export default {
       registerSendingCode: false,
       registerCountdown: 0,
       registerCountdownTimer: null,
+      registerCodeSent: false,
       regPwdFocused: false,
       regHasMinLength: false,
       regHasUppercase: false,
@@ -1160,6 +1167,7 @@ export default {
 
           if (res.code === 1) {
             this.$message.success(this.$t('user.login.codeSent') || 'Verification code sent')
+            this.codeLoginSent = true
             this.startCodeLoginCountdown()
           } else {
             this.codeLoginError = res.msg || 'Failed to send code'
@@ -1169,7 +1177,11 @@ export default {
           }
         } catch (e) {
           this.codeLoginError = e.response?.data?.msg || this.$t('user.security.verificationFailed') || 'Failed to send code'
-          if (e.response?.status === 429 && !this.codeLoginCountdownTimer) this.startCodeLoginCountdown()
+          if (e.response?.status === 429) {
+            // A code is already on its way: let the user type it in.
+            this.codeLoginSent = true
+            if (!this.codeLoginCountdownTimer) this.startCodeLoginCountdown()
+          }
           if (this.isTurnstileErrorMessage(this.codeLoginError)) {
             this.resetSharedTurnstile()
           }
@@ -1180,6 +1192,7 @@ export default {
     },
 
     startCodeLoginCountdown () {
+      clearInterval(this.codeLoginCountdownTimer)
       this.codeLoginCountdown = 60
       this.codeLoginCountdownTimer = setInterval(() => {
         this.codeLoginCountdown--
@@ -1195,6 +1208,10 @@ export default {
       this.legalError = false
       if (!this.legalAgreed) {
         this.legalError = true
+        return
+      }
+      if (!this.codeLoginSent) {
+        this.handleCodeLoginSendCode()
         return
       }
 
@@ -1324,7 +1341,9 @@ export default {
     },
 
     async handleRegisterSendCode () {
-      this.registerForm.validateFields(['email'], async (err, values) => {
+      // Validate the whole form before sending, so the user doesn't get a code
+      // and only then learn the username or password is invalid.
+      this.registerForm.validateFields(['email', 'username', 'password', 'confirmPassword'], async (err, values) => {
         if (err) return
 
         this.registerSendingCode = true
@@ -1340,6 +1359,7 @@ export default {
 
           if (res.code === 1) {
             this.$message.success(this.$t('user.register.codeSent') || 'Verification code sent')
+            this.registerCodeSent = true
             this.startRegisterCountdown()
           } else {
             this.registerError = res.msg || 'Failed to send code'
@@ -1349,7 +1369,11 @@ export default {
           }
         } catch (e) {
           this.registerError = e.response?.data?.msg || this.$t('user.security.verificationFailed') || 'Failed to send code'
-          if (e.response?.status === 429 && !this.registerCountdownTimer) this.startRegisterCountdown()
+          if (e.response?.status === 429) {
+            // A code is already on its way: let the user type it in.
+            this.registerCodeSent = true
+            if (!this.registerCountdownTimer) this.startRegisterCountdown()
+          }
           if (this.isTurnstileErrorMessage(this.registerError)) {
             this.resetSharedTurnstile()
           }
@@ -1360,6 +1384,7 @@ export default {
     },
 
     startRegisterCountdown () {
+      clearInterval(this.registerCountdownTimer)
       this.registerCountdown = 60
       this.registerCountdownTimer = setInterval(() => {
         this.registerCountdown--
@@ -1375,6 +1400,10 @@ export default {
       this.legalError = false
       if (!this.legalAgreed) {
         this.legalError = true
+        return
+      }
+      if (!this.registerCodeSent) {
+        this.handleRegisterSendCode()
         return
       }
 
