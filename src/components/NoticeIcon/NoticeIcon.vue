@@ -58,6 +58,7 @@
       :footer="null"
       :width="isHtmlReport ? 900 : 660"
       :wrapClassName="isHtmlReport ? 'notice-detail-modal html-report-modal' : 'notice-detail-modal'"
+      :zIndex="2600"
       centered
     >
       <div v-if="detailNotice" class="notice-detail">
@@ -154,9 +155,15 @@ import {
   noticeTitle,
   noticePreview,
   noticeMessageHtml,
-  noticeTypeLabel
+  noticeTypeLabel,
+  isAlertNotice
 } from '@/utils/noticeFormat'
 import { createVisibilityPolling } from '@/utils/visibilityPolling'
+import { armAlertSound, playAlertSound, stopAlertSound } from '@/utils/alertSound'
+
+// How often to look for new signals. Runs in background tabs too, where the
+// browser may stretch the interval to about a minute.
+const ALERT_POLL_MS = 10000
 
 export default {
   name: 'HeaderNotice',
@@ -170,7 +177,22 @@ export default {
       unreadTotal: 0,
       lastFetchId: 0,
       pollingTimer: null,
-      noticePoller: null
+      noticePoller: null,
+      alertPoller: null,
+      // Highest notification id already seen; null until the baseline loads.
+      lastSeenId: null
+    }
+  },
+  watch: {
+    detailVisible (open) {
+      if (open) return
+      stopAlertSound()
+      // An alert popup is acknowledged, and so marked read, when it is closed.
+      const notice = this.detailNotice
+      if (notice && !notice.is_read) {
+        notice.is_read = true
+        this.markAsRead(notice.id)
+      }
     }
   },
   computed: {
@@ -193,11 +215,13 @@ export default {
     }
   },
   mounted () {
+    armAlertSound()
     this.fetchUnreadCount()
     this.startPolling()
   },
   beforeDestroy () {
     this.stopPolling()
+    stopAlertSound()
   },
   methods: {
     startPolling () {
@@ -209,11 +233,21 @@ export default {
         }
       }, 30000, { immediate: false })
       this.noticePoller.start()
+      this.alertPoller = createVisibilityPolling(
+        () => this.checkNewNotifications(),
+        ALERT_POLL_MS,
+        { runWhenHidden: true }
+      )
+      this.alertPoller.start()
     },
     stopPolling () {
       if (this.noticePoller) {
         this.noticePoller.stop()
         this.noticePoller = null
+      }
+      if (this.alertPoller) {
+        this.alertPoller.stop()
+        this.alertPoller = null
       }
       if (this.pollingTimer) {
         clearInterval(this.pollingTimer)
@@ -239,21 +273,7 @@ export default {
       try {
         const res = await getStrategyNotifications({ limit: 50 })
         if (res.code === 1 && res.data?.items) {
-          this.notifications = res.data.items.map(item => {
-            let payload = item.payload_json
-            if (typeof payload === 'string') {
-              try {
-                payload = JSON.parse(payload)
-              } catch (e) {
-                payload = {}
-              }
-            }
-            return {
-              ...item,
-              payload,
-              is_read: item.is_read === 1 || item.is_read === true
-            }
-          })
+          this.notifications = res.data.items.map(this.normalizeNotice)
           if (this.notifications.length > 0) {
             this.lastFetchId = Math.max(...this.notifications.map(n => n.id))
           }
@@ -263,6 +283,44 @@ export default {
       } finally {
         this.loading = false
       }
+    },
+    normalizeNotice (item) {
+      let payload = item.payload_json
+      if (typeof payload === 'string') {
+        try {
+          payload = JSON.parse(payload)
+        } catch (e) {
+          payload = {}
+        }
+      }
+      return {
+        ...item,
+        payload,
+        is_read: item.is_read === 1 || item.is_read === true
+      }
+    },
+    // The first call only records the newest id, so a page load never replays
+    // old signals. Later calls pop up and sound the newest unseen signal.
+    async checkNewNotifications () {
+      const baseline = this.lastSeenId === null
+      const res = await getStrategyNotifications(
+        baseline ? { limit: 1 } : { since_id: this.lastSeenId, limit: 20 }
+      )
+      if (!res || res.code !== 1 || !Array.isArray(res.data?.items)) return
+      const items = res.data.items.map(this.normalizeNotice)
+      this.lastSeenId = Math.max(this.lastSeenId || 0, ...items.map(n => Number(n.id) || 0))
+      if (baseline || !items.length) return
+
+      const unread = items.filter(n => !n.is_read)
+      this.unreadTotal = this.unreadCount + unread.length
+      if (this.visible) this.fetchNotifications(true)
+
+      // Items arrive newest first; the rest stay unread in the bell list.
+      const alert = unread.find(isAlertNotice)
+      if (!alert) return
+      this.detailNotice = alert
+      this.detailVisible = true
+      playAlertSound()
     },
     fetchNotice () {
       if (!this.visible) this.fetchNotifications()

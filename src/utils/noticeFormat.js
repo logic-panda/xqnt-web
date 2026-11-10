@@ -327,6 +327,20 @@ function renderFromDisplay (item, t, { html = false } = {}) {
   return null
 }
 
+const ALERT_TEMPLATES = ['signal.trade', 'indicator.signal', 'profile.test']
+
+/**
+ * Notifications that interrupt the user with a sound and a popup: trading and
+ * indicator signals, price alerts, and the Profile test message (so the alert
+ * can be tried without waiting for a real signal).
+ */
+export function isAlertNotice (item) {
+  if (!item) return false
+  if (item.signal_type === 'price_alert') return true
+  const d = displayOf(item)
+  return !!d && ALERT_TEMPLATES.includes(d.template)
+}
+
 export function noticeTitle (item, t) {
   const rendered = renderFromDisplay(item, t)
   if (rendered && rendered.title) return rendered.title
