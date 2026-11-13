@@ -1024,6 +1024,13 @@
               <div v-if="signalAlertForm.channels.includes('webhook')" class="signal-alert-target-row">
                 <a-input v-model="signalAlertForm.webhookUrl" :placeholder="$t('indicatorIde.signalAlert.webhookUrlPlaceholder')" />
               </div>
+              <div v-if="signalAlertForm.channels.includes('webhook')" class="signal-alert-target-row">
+                <a-input-password
+                  v-model="signalAlertForm.webhookToken"
+                  autocomplete="new-password"
+                  :placeholder="$t('profile.notifications.webhookToken')"
+                />
+              </div>
             </div>
 
             <div v-if="signalAlertForm.channels.includes('telegram')" class="signal-alert-block">
@@ -2695,6 +2702,10 @@ export default {
       const key = `${task.market}:${task.symbol}`
       const defaults = this.signalAlertNotificationDefaults || {}
       const targets = task.targets || {}
+      // A webhook's token and signing secret belong to its URL: the profile's fill in only with the profile's URL.
+      const webhook = targets.webhook_url
+        ? targets
+        : { webhook_url: defaults.webhookUrl, webhook_token: defaults.webhookToken, webhook_signing_secret: defaults.webhookSigningSecret }
       this.signalAlertForm = {
         watchlistKey: key,
         market: task.market || this.market,
@@ -2708,9 +2719,9 @@ export default {
         channels: Array.isArray(task.channels) && task.channels.length ? [...task.channels] : ['browser'],
         email: targets.email || defaults.email || '',
         telegramChatId: targets.telegram_chat_id || defaults.telegramChatId || '',
-        webhookUrl: targets.webhook_url || defaults.webhookUrl || '',
-        webhookToken: targets.webhook_token || defaults.webhookToken || '',
-        webhookSigningSecret: targets.webhook_signing_secret || defaults.webhookSigningSecret || ''
+        webhookUrl: webhook.webhook_url || '',
+        webhookToken: webhook.webhook_token || '',
+        webhookSigningSecret: webhook.webhook_signing_secret || ''
       }
       this.signalAlertActiveTab = 'create'
     },
